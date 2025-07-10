@@ -1,0 +1,80 @@
+[
+  {
+    "P1P1V1+VB02": {
+      "ip": "192.168.10.1",
+      "ports": {
+        "port1": {
+          "vibMax": 4,
+          "tempMax": 20,
+          "vibValueWarning": 2,
+          "tempValueWarning": 10,
+          "name": "port1",
+          "ip": "192.168.10.1",
+          "cmtkPort": "port1",
+          "mqttInstance": {
+            "ip": "192.168.10.1",
+            "port": 1883,
+            "topic": "balluff/cmtk/master1/iolink/devices/port1/data/fromdevice",
+            "client_id": "client-mqtt-port1",
+            "username": "user",
+            "password": "Balluff#1"
+          },
+          "lastReadValues": {
+            "Contact Temperature Contact Temperature": 25.28435707092285,
+            "Vibration Velocity RMS v-RMS X": 0.11050373315811157,
+            "Vibration Velocity RMS v-RMS Y": 0.11668039113283157,
+            "Vibration Velocity RMS v-RMS Z": 0.34869813919067383
+          },
+          "tempErrorCount": 46,
+          "tempWarningCount": 46,
+          "vibErrorCount": 0,
+          "vibWarningCount": 0,
+          "tempHealthyCount": 1,
+          "vibHealthyCount": 0,
+          "tempNoFailureCount": 1,
+          "vibNoFailureCount": 0,
+          "tempWarning": true,
+          "vibWarning": false,
+          "tempFailure": true,
+          "vibFailure": false,
+          "error": {
+            "port": "port1",
+            "cmtk": "P1P1V1+VB02",
+            "failure": "Temperature Warning",
+            "date": "2025-07-09 11:59:35"
+          },
+          "statusBits": {
+            "velocityPreAlarm": false,
+            "velocityMainAlaram": false,
+            "tempPreAlarm": false,
+            "tempMainAlaram": false
+          }
+        }
+      },
+      "influxConnection": {
+        "host": "192.168.10.1",
+        "port": 8086,
+        "protocol": "https",
+        "database": "balluffCMTKDatabase",
+        "username": "cmtk",
+        "password": "Balluff#1",
+        "options": {
+          "rejectUnauthorized": false
+        },
+        "influx": null
+      },
+      "description": "Test description",
+      "enabledPorts": [
+        "port1"
+      ]
+    }
+  },
+  {
+    "CmtkTest": {
+      "ip": "123.123.132",
+      "ports": {},
+      "influxConnection": null,
+      "description": "Test description.123"
+    }
+  }
+]

@@ -1,0 +1,81 @@
+{
+  "Fosfato": [
+    "P1P1V1+VB06",
+    "P1P1V1+VB07",
+    "P1P1V1+VB02",
+    "P1P1V1+VB03",
+    "P1P1V1+VB04",
+    "CmtkTest"
+  ],
+  "Horno TC1": [
+    "P1C1T1+FL01",
+    "P1C1T1+UA04",
+    "P1C1T1+UA05",
+    "P1C1T1+UA06"
+  ],
+  "Horno TC2": [
+    "P1B2V1+ZL01",
+    "P1B2V1+ZL03",
+    "P1B2V1+ZL05"
+  ],
+  "ASU1 TC1": [
+    "P1B1V1+ZL01"
+  ],
+  "TACK-OFF TC1 TC2": [
+    "P1B1V1+ZL07"
+  ],
+  "ASU3 TC1": [
+    "P1B1V1+ZL03"
+  ],
+  "CAU2 TC1": [
+    "P1B1V1+ZL05"
+  ],
+  "ASU3 TC2": [
+    "P1B2V1+ZL03"
+  ],
+  "ASU2 TC1": [
+    "P1B1V1+ZL02"
+  ],
+  "CAU1 TC2": [
+    "P1B1V2+ZL04"
+  ],
+  "ASU2 TC2": [
+    "P1B2V1+ZL02"
+  ],
+  "ASU1 TUTONE": [
+    "P1B3V1+ZL01"
+  ],
+  "CAU1 TUTONE": [
+    "P1B3V1+ZL02"
+  ],
+  "CAU2 TUTONE": [
+    "P1B3V1+ZL03"
+  ],
+  "Workdeck ASU2": [
+    "P1D1V1+ZL02"
+  ],
+  "Workdeck ASU3": [
+    "P1D1V1+ZL03"
+  ],
+  "Workdeck ASU4": [
+    "P1D1V1+ZL04"
+  ],
+  "Horno Ecoat": [
+    "P1E1T1+UA08",
+    "P1E1T1+UA10",
+    "P1E1T1+UH01",
+    "P1E1T1+UH02",
+    "P1E1T1+UH03",
+    "P1E1T1+TN01"
+  ],
+  "3 WET TU-TONE OVEN COOLING ZONE": [
+    "P1C3T1+KL01"
+  ],
+  "Horno Sello": [
+    "P1S1T1+UA01",
+    "P1S1T1+UA02",
+    "P1S1T1+UA04",
+    "P1S1T1+UA05",
+    "P1S1T1+UH01"
+  ]
+}
