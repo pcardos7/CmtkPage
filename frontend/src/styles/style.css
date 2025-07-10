@@ -1,0 +1,48 @@
+.dashboard-nav {
+    max-width: 100vw; /* Prevents overflowing width */
+    overflow-x: hidden; /* Ensures hidden horizontal overflow */
+    box-sizing: border-box; /* Padding/borders won’t cause scroll */
+}
+
+/* Also make sure that mobile-show class does not push width beyond viewport */
+.dashboard-nav.mobile-show {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Optional: make navbar full width on small screens */
+@media (max-width: 990px) {
+    .dashboard-nav {
+        width: 100vw;
+        position: fixed; /* if you want it to stay put */
+        z-index: 1000; /* above main content */
+    }
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center; /* horizontally center */
+    align-items: center; /* vertically center */
+    min-width: 100vw; /* full viewport width */
+    min-height: 100vh; /* full viewport height */
+    font-family: var(--bs-body-font-family);
+    font-size: var(--bs-body-font-size);
+    font-weight: var(--bs-body-font-weight);
+    line-height: var(--bs-body-line-height);
+    color: var(--bs-body-color);
+    text-align: var(--bs-body-text-align);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+}
+
+.container-fluid {
+    --bs-gutter-x: 0;
+    background-color: #dbdbdb;
+}
+
+.card {
+    border-radius: 10%;
+}

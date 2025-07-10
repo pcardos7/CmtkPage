@@ -1,0 +1,16 @@
+/* 
+Color Palette:
+    Platinum    - #DBDBDB
+    Eerie Black - #202528
+    Oxford Blue - #112A4E
+    Cardinal    - #AD343E
+    Blue (NCS)  - #0094C6
+*/
+
+.dropdown-item:active {
+    background-color: #112a4e;
+}
+
+.active-link {
+    color: #ad343e;
+}
