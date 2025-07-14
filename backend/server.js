@@ -13,8 +13,9 @@ import fs from "fs";
 import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { clear } from "console";
 
-const LOCAL_SERVER_PORT = 3000;
+const LOCAL_SERVER_PORT = 3000; // Local server port
 const MQTT_PORT = 1883; // MQTT PORT (CMTK)
 const SERVER_PORT = 1883; // MQTT PORT (Plant server)
 const INFLUXDB_PORT = 8086; // INFLUXDB PORT (CMTK)
@@ -23,9 +24,14 @@ const FRONTEND_DIRECTION = "http://localhost:5173"; // Frontend direction
 const PLANT_SERVER_IP = "127.0.0.1"; // Plant server IP (MQTT server)
 const CMTKs_PATH = "./CMTKS_DATA.json"; // Path to the CMTKs data file
 
+/* Periodic connection variables */
+const CONNECTION_SAMPLING_TIME = 1000; // Time to wait between connection attempts
+let connectionIntervalID; // ID of the interval for connection attempts
+let noConnectedCmtk = []; // Array to store all the cmtk that weren't connected
+
+/*Periodic sampling variables */
 let samplingTime = 1000; // Time per sample (default value)
 let samplingID; // ID of the interval for sampling
-let noConnectedCmtk = []; // Array to store all the cmtk that weren't connected
 
 // Get the current file and directory names
 const __filename = fileURLToPath(import.meta.url);
@@ -42,11 +48,11 @@ let CMTKs;
 const app = express();
 
 app.use(
-    cors({
-        origin: FRONTEND_DIRECTION, // allow only frontend
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"], // expected headers
-    })
+	cors({
+		origin: FRONTEND_DIRECTION, // allow only frontend
+		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"], // expected headers
+	})
 );
 
 app.use(express.json());
@@ -62,25 +68,25 @@ app.use(express.json());
  * }
  */
 const errorsHistory = [
-    {
-        location: "test",
-        cmtk: "testCmtk",
-        port: "testPort",
-        failure: "testFailure",
-        date: "2024-06-04 08:23:07",
-    },
+	{
+		location: "test",
+		cmtk: "testCmtk",
+		port: "testPort",
+		failure: "testFailure",
+		date: "2024-06-04 08:23:07",
+	},
 ];
 
 /* MQTT conection to plant server 
     Change with server's info
 */
 const PlantServerMQTT = new MQTT({
-    ip: PLANT_SERVER_IP, // Server ip
-    port: SERVER_PORT,
-    topic: "balluff/cmtk/master1/iolink/devices/port1/data/fromdevice",
-    client_id: "client-mqtt-1",
-    username: "user",
-    password: "Balluff#1",
+	ip: PLANT_SERVER_IP, // Server ip
+	port: SERVER_PORT,
+	topic: "balluff/cmtk/master1/iolink/devices/port1/data/fromdevice",
+	client_id: "client-mqtt-1",
+	username: "user",
+	password: "Balluff#1",
 });
 
 // Init MQTT connection
@@ -94,14 +100,14 @@ const PlantServerMQTT = new MQTT({
  * @param {Object} data - Data to store
  */
 function CreateJsonFile(title, data) {
-    const jsonData = JSON.stringify(data, null, 2);
-    fs.writeFile(title, jsonData, "utf8", (e) => {
-        if (e) {
-            console.error(`Error writing ${title}`);
-        } else {
-            console.log(`Data written to ${title}`);
-        }
-    });
+	const jsonData = JSON.stringify(data, null, 2);
+	fs.writeFile(title, jsonData, "utf8", (e) => {
+		if (e) {
+			console.error(`Error writing ${title}`);
+		} else {
+			console.log(`Data written to ${title}`);
+		}
+	});
 }
 
 /**
@@ -111,89 +117,179 @@ function CreateJsonFile(title, data) {
  * @returns {Promise<Object>} The parsed JSON object.
  */
 async function ReadJsonFile(title) {
-    const data = await readFile(title, "utf8"); // Read file as string
-    return JSON.parse(data); // Parse JSON and return
+	const data = await readFile(title, "utf8"); // Read file as string
+	return JSON.parse(data); // Parse JSON and return
 }
 
 /**
  * Gets all CMTK's info
  */
 async function loadCMTKs() {
-    try {
-        // Read CMTK locations (relative path)
-        const cmtksData = await ReadJsonFile(path.join(__dirname, CMTKs_PATH));
+	try {
+		// Read CMTK locations (relative path)
+		const cmtksData = await ReadJsonFile(path.join(__dirname, CMTKs_PATH));
 
-        CMTKs = cmtksData;
-    } catch (error) {
-        console.error("Failed to read JSON files:", error);
-    }
+		CMTKs = cmtksData;
+	} catch (error) {
+		console.error("Failed to read JSON files:", error);
+	}
 }
 
 /**
  * Deletes all errors in errorsHistory older than the internal cutoff date.
  */
 function DepureHistory() {
-    ///// Gets the date KEEP_ERRORS hours ago ///////
-    const now = new Date();
-    const dateToDelete = new Date(now.getTime() - KEEP_ERRORS * 60 * 60 * 1000); // Timestamp indicating the cutoff time; errors older than this will be deleted
+	///// Gets the date KEEP_ERRORS hours ago ///////
+	const now = new Date();
+	const dateToDelete = new Date(now.getTime() - KEEP_ERRORS * 60 * 60 * 1000); // Timestamp indicating the cutoff time; errors older than this will be deleted
 
-    // Format the date to match the format in errorsHistory
-    const year = dateToDelete.getFullYear();
-    const month = String(dateToDelete.getMonth() + 1).padStart(2, "0");
-    const day = String(dateToDelete.getDate()).padStart(2, "0");
-    const hours = String(dateToDelete.getHours()).padStart(2, "0");
-    const minutes = String(dateToDelete.getMinutes()).padStart(2, "0");
-    const seconds = String(dateToDelete.getSeconds()).padStart(2, "0");
+	// Format the date to match the format in errorsHistory
+	const year = dateToDelete.getFullYear();
+	const month = String(dateToDelete.getMonth() + 1).padStart(2, "0");
+	const day = String(dateToDelete.getDate()).padStart(2, "0");
+	const hours = String(dateToDelete.getHours()).padStart(2, "0");
+	const minutes = String(dateToDelete.getMinutes()).padStart(2, "0");
+	const seconds = String(dateToDelete.getSeconds()).padStart(2, "0");
 
-    const formattedDateToDelete = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    /////////////////////////////////////////////////
+	const formattedDateToDelete = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+	/////////////////////////////////////////////////
 
-    for (let index = errorsHistory.length - 1; index >= 0; index--) {
-        const element = errorsHistory[index].date;
+	for (let index = errorsHistory.length - 1; index >= 0; index--) {
+		const element = errorsHistory[index].date;
 
-        if (element < formattedDateToDelete) {
-            errorsHistory.splice(index, 1); // Remove one element at index position
-        }
-    }
+		if (element < formattedDateToDelete) {
+			errorsHistory.splice(index, 1); // Remove one element at index position
+		}
+	}
 }
 
 /**
  *  This fucntions detects the errors and stores them.
  */
 function ErrorsHandler() {
-    // Loop through all areas
-    for (let area of Object.keys(CMTKs)) {
-        // Loor through all cmtks of the current area
-        for (let cmtkLabel of Object.keys(CMTKs[area])) {
-            // If cmtk is not connected pass it
-            if (noConnectedCmtk.includes(cmtkLabel)) {
-                continue;
-            }
-            const cmtk = CMTKs[area][cmtkLabel];
-            const ports = Object.keys(cmtk.ports);
+	// Loop through all areas
+	for (let area of Object.keys(CMTKs)) {
+		// Loor through all cmtks of the current area
+		for (let cmtkLabel of Object.keys(CMTKs[area])) {
+			// If cmtk is not connected pass it
+			if (noConnectedCmtk.includes(cmtkLabel) || findCmtk(cmtkLabel) === null) {
+				continue;
+			}
 
-            // At least one port shall be enabled
-            if (cmtk.ports.length !== 0) {
-                for (let index = 0; index < ports.length; index++) {
-                    const port = ports[index]; // Current port
+			// Get the cmtk instance
+			const cmtk = CMTKs[area][cmtkLabel];
+			const ports = Object.keys(cmtk.ports);
 
-                    if (cmtk.ports[port].lastReadValues.length === 0) {
-                        break;
-                    }
+			// At least one port shall be enabled
+			if (cmtk.ports.length !== 0) {
+				for (let index = 0; index < ports.length; index++) {
+					const port = ports[index]; // Current port
 
-                    // Check if there is a warning
-                    const error = cmtk.ports[port].DetectEngineFailure();
-                    cmtk.ports[port].DetectEngineWarning();
-                    cmtk.ports[port].DetectEngineOk();
+					if (cmtk.ports[port].lastReadValues.length === 0) {
+						break;
+					}
 
-                    if (error == true) {
-                        const result = { ...cmtk.ports[port].error, area };
-                        errorsHistory.push(result);
-                    }
-                }
-            }
-        }
-    }
+					// Check if there is a warning
+					const error = cmtk.ports[port].DetectEngineFailure();
+					cmtk.ports[port].DetectEngineWarning();
+					cmtk.ports[port].DetectEngineOk();
+
+					if (error == true) {
+						const result = { ...cmtk.ports[port].error, area };
+						errorsHistory.push(result);
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Connects to the specified CMTK.
+ *
+ * @param {string} cmtkLabel - The label of the CMTK to connect to.
+ *
+ * @returns {Promise<void>} A promise that resolves when the connection is established.
+ */
+async function Connect2Cmtk(cmtkLabel) {
+	const cmtk = findCmtk(cmtkLabel);
+
+	try {
+		if (cmtk) {
+			// Create the influx connection to the cmtk
+			cmtk.influxConnection = new InfluxDB_({
+				host: cmtk.ip, // Cmtk ip
+				port: INFLUXDB_PORT,
+				protocol: "https",
+				database: "balluffCMTKDatabase",
+				username: "cmtk",
+				password: "Balluff#1",
+
+				options: {
+					rejectUnauthorized: false,
+				},
+			});
+
+			// Initialize the InfluxDB connection
+			await cmtk.influxConnection.InitInfluxDB();
+
+			// Await the tables directly using await instead of then
+			const tables = await cmtk.influxConnection.GetTables();
+
+			cmtk.enabledPorts = tables; // Save the active ports
+
+			// If no table is read
+			if (tables === null) {
+				console.error(`No port detected. ${cmtkLabel}: ${cmtk.description}.`);
+				return false; // Exit early, return false to indicate failure
+			}
+
+			// Loop through all ports of the current cmtk
+			for (let port of tables) {
+				// Create MQTT instance for the current port
+				cmtk.ports[port] = new Sensor({
+					ip: cmtk.ip,
+					name: port,
+					cmtkPort: port,
+					port: MQTT_PORT,
+					topic: `balluff/cmtk/master1/iolink/devices/${port}/data/fromdevice`,
+					user: "user",
+					password: "Balluff#1",
+					cmtk: cmtkLabel,
+				});
+
+				// Inits the MQTT instance, await here too
+				await cmtk.ports[port].mqttInstance.InitMQTT();
+			}
+
+			return true; // Return true if connection is successful
+		} else {
+			console.error(`CMTK with label ${cmtkLabel} not found.`);
+			return false;
+		}
+	} catch (error) {
+		console.error("Error connecting to CMTK:", error);
+		return false; // Return false if connection fails
+	}
+}
+
+/**
+ * Tries to connect to the specified CMTK.
+ *
+ */
+async function Try2Connect() {
+	for (let cmtkLabel of noConnectedCmtk) {
+		const connected = await Connect2Cmtk(cmtkLabel);
+
+		if (connected) {
+			console.log(`Connected to CMTK: ${cmtkLabel}`);
+			noConnectedCmtk = noConnectedCmtk.filter((label) => label !== cmtkLabel); // Remove connected CMTK from the list
+
+			if (noConnectedCmtk.length === 0) {
+				clearInterval(connectionIntervalID); // Clear the interval if all CMTKs are connected
+			}
+		}
+	}
 }
 
 /**
@@ -202,13 +298,16 @@ function ErrorsHandler() {
  * @returns {Object} Cmtk's instance.
  */
 function findCmtk(cmtkValue) {
-    for (let area of Object.keys(CMTKs)) {
-        if (Object.keys(CMTKs[area]).includes(cmtkValue)) {
-            return CMTKs[area][cmtkValue]; // The location key itself
-        }
-    }
-
-    return null; // Not found
+	try {
+		for (let area of Object.keys(CMTKs)) {
+			if (Object.keys(CMTKs[area]).includes(cmtkValue)) {
+				return CMTKs[area][cmtkValue]; // The location key itself
+			}
+		}
+	} catch (error) {
+		console.error("Error finding CMTK:", error);
+	}
+	return null; // Not found
 }
 
 /**
@@ -218,18 +317,18 @@ function findCmtk(cmtkValue) {
  * @returns {string} - Cmtk's location.
  */
 function findLocationByCmtk(cmtkLabel) {
-    for (let area of Object.keys(CMTKs)) {
-        if (Object.keys(CMTKs[area]).includes(cmtkLabel)) {
-            return area;
-        }
-    }
-    return null; // Not found
+	for (let area of Object.keys(CMTKs)) {
+		if (Object.keys(CMTKs[area]).includes(cmtkLabel)) {
+			return area;
+		}
+	}
+	return null; // Not found
 }
 
 app.use((req, res, next) => {
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    next();
+	res.setHeader("Content-Type", "application/json; charset=utf-8");
+	res.setHeader("Access-Control-Allow-Origin", "*");
+	next();
 });
 
 /**
@@ -244,10 +343,10 @@ app.use((req, res, next) => {
  * }
  */
 app.get("/api/errors-history", (req, res) => {
-    res.json({
-        success: true,
-        data: errorsHistory,
-    });
+	res.json({
+		success: true,
+		data: errorsHistory,
+	});
 });
 
 /**
@@ -262,10 +361,10 @@ app.get("/api/errors-history", (req, res) => {
  * }
  */
 app.get("/api/cmtk-locations", (req, res) => {
-    res.json({
-        success: true,
-        data: Object.keys(CMTKs),
-    });
+	res.json({
+		success: true,
+		data: Object.keys(CMTKs),
+	});
 });
 
 /**
@@ -288,41 +387,39 @@ app.get("/api/cmtk-locations", (req, res) => {
  *
  */
 app.get("/api/get-data/:cmtk", (req, res) => {
-    const { cmtk } = req.params;
-    const time = req.query.time; // Get time
-    const consultedPort = req.query.port; // Get port
+	const { cmtk } = req.params;
+	const time = req.query.time; // Get time
+	const consultedPort = req.query.port; // Get port
 
-    try {
-        const cmtkData = findCmtk(cmtk);
+	try {
+		const cmtkData = findCmtk(cmtk);
 
-        cmtkData.influxConnection.InitInfluxDB();
+		cmtkData.influxConnection.InitInfluxDB();
 
-        // Getting the last 24h data
-        cmtkData.influxConnection
-            .GetPreviousSampled(consultedPort, time)
-            .then((portData) => {
-                if (portData) {
-                    // Return the index (and maybe other info if you want)
-                    res.json({
-                        success: true,
-                        data: portData,
-                    });
-                } else {
-                    console.log("No data returned");
-                }
-            })
-            .catch((error) => {
-                console.error("Error fetching port data:", error);
-            });
-    } catch (e) {
-        console.error(
-            `Error at GET request /api/get-data/:cmtk -> ${e.message}`
-        );
-        res.json({
-            success: false,
-            data: e.message,
-        });
-    }
+		// Getting the last 24h data
+		cmtkData.influxConnection
+			.GetPreviousSampled(consultedPort, time)
+			.then((portData) => {
+				if (portData) {
+					// Return the index (and maybe other info if you want)
+					res.json({
+						success: true,
+						data: portData,
+					});
+				} else {
+					console.log("No data returned");
+				}
+			})
+			.catch((error) => {
+				console.error("Error fetching port data:", error);
+			});
+	} catch (e) {
+		console.error(`Error at GET request /api/get-data/:cmtk -> ${e.message}`);
+		res.json({
+			success: false,
+			data: e.message,
+		});
+	}
 });
 
 /**
@@ -341,24 +438,22 @@ app.get("/api/get-data/:cmtk", (req, res) => {
  *
  */
 app.get("/api/get-location/:cmtkLabel", (req, res) => {
-    try {
-        const { cmtkLabel } = req.params;
-        const location = findLocationByCmtk(cmtkLabel);
+	try {
+		const { cmtkLabel } = req.params;
+		const location = findLocationByCmtk(cmtkLabel);
 
-        res.json({
-            success: true,
-            data: location,
-        });
-    } catch (error) {
-        // Return fail
-        res.json({
-            success: false,
-            message: error.message,
-        });
-        console.error(
-            `Error getting cmtk's location(${cmtkLabel}): ${error.message}`
-        );
-    }
+		res.json({
+			success: true,
+			data: location,
+		});
+	} catch (error) {
+		// Return fail
+		res.json({
+			success: false,
+			message: error.message,
+		});
+		console.error(`Error getting cmtk's location(${cmtkLabel}): ${error.message}`);
+	}
 });
 
 /**
@@ -377,29 +472,27 @@ app.get("/api/get-location/:cmtkLabel", (req, res) => {
  *
  */
 app.get("/api/get-ports/:cmtk", (req, res) => {
-    const { cmtk } = req.params;
-    const cmtkInstance = findCmtk(cmtk); // Gets the cmtk instance
+	const { cmtk } = req.params;
+	const cmtkInstance = findCmtk(cmtk); // Gets the cmtk instance
 
-    try {
-        cmtkInstance.influxConnection.InitInfluxDB(); // Init the inflix connection
+	try {
+		cmtkInstance.influxConnection.InitInfluxDB(); // Init the inflix connection
 
-        // Get all influx tables (ports)
-        cmtkInstance.influxConnection.GetTables().then((ports) => {
-            res.json({
-                success: true,
-                data: ports,
-            });
-        });
-    } catch (error) {
-        // Return fail
-        res.json({
-            success: false,
-            message: error.message,
-        });
-        console.error(
-            `Error al conectar con el cmtk(${cmtk}): ${error.message}`
-        );
-    }
+		// Get all influx tables (ports)
+		cmtkInstance.influxConnection.GetTables().then((ports) => {
+			res.json({
+				success: true,
+				data: ports,
+			});
+		});
+	} catch (error) {
+		// Return fail
+		res.json({
+			success: false,
+			message: error.message,
+		});
+		console.error(`Error al conectar con el cmtk(${cmtk}): ${error.message}`);
+	}
 });
 
 /**
@@ -421,26 +514,26 @@ app.get("/api/get-ports/:cmtk", (req, res) => {
  *
  */
 app.get("/api/get-health/:cmtk", (req, res) => {
-    const { cmtk } = req.params;
+	const { cmtk } = req.params;
 
-    const cmtkData = findCmtk(cmtk);
-    const consultedPort = req.query.port; // Get port
+	const cmtkData = findCmtk(cmtk);
+	const consultedPort = req.query.port; // Get port
 
-    try {
-        const sensor = cmtkData.ports[consultedPort]; // Get sensor data
+	try {
+		const sensor = cmtkData.ports[consultedPort]; // Get sensor data
 
-        res.json({
-            success: true,
-            data: {
-                tempWarning: sensor.tempWarning,
-                vibWarning: sensor.vibWarning,
-                tempFailure: sensor.tempFailure,
-                vibFailure: sensor.vibFailure,
-            },
-        });
-    } catch (e) {
-        console.error(`Error GET request /api/get-health/:cmtk ${e.message}`);
-    }
+		res.json({
+			success: true,
+			data: {
+				tempWarning: sensor.tempWarning,
+				vibWarning: sensor.vibWarning,
+				tempFailure: sensor.tempFailure,
+				vibFailure: sensor.vibFailure,
+			},
+		});
+	} catch (e) {
+		console.error(`Error GET request /api/get-health/:cmtk ${e.message}`);
+	}
 });
 
 /**
@@ -459,14 +552,14 @@ app.get("/api/get-health/:cmtk", (req, res) => {
  *
  */
 app.get("/api/description/:cmtkLabel", (req, res) => {
-    const { cmtkLabel } = req.params;
+	const { cmtkLabel } = req.params;
 
-    const cmtkData = findCmtk(cmtkLabel); // Get cmtk instance
+	const cmtkData = findCmtk(cmtkLabel); // Get cmtk instance
 
-    res.json({
-        success: true,
-        data: cmtkData.description,
-    });
+	res.json({
+		success: true,
+		data: cmtkData.description,
+	});
 });
 
 /**
@@ -485,14 +578,14 @@ app.get("/api/description/:cmtkLabel", (req, res) => {
  *
  */
 app.get("/api/ip/:cmtk", (req, res) => {
-    const { cmtk } = req.params;
+	const { cmtk } = req.params;
 
-    const cmtkData = findCmtk(cmtk); // Get cmtk instance
+	const cmtkData = findCmtk(cmtk); // Get cmtk instance
 
-    res.json({
-        success: true,
-        data: cmtkData.ip,
-    });
+	res.json({
+		success: true,
+		data: cmtkData.ip,
+	});
 });
 
 /**
@@ -512,13 +605,13 @@ app.get("/api/ip/:cmtk", (req, res) => {
  *
  */
 app.get("/api/port-name/:cmtk/:port", (req, res) => {
-    const { cmtk, port } = req.params;
-    const cmtkInstance = findCmtk(cmtk);
+	const { cmtk, port } = req.params;
+	const cmtkInstance = findCmtk(cmtk);
 
-    res.json({
-        success: true,
-        data: cmtkInstance.ports[port].name,
-    });
+	res.json({
+		success: true,
+		data: cmtkInstance.ports[port].name,
+	});
 });
 
 /**
@@ -537,21 +630,19 @@ app.get("/api/port-name/:cmtk/:port", (req, res) => {
  *
  */
 app.get("/api/ports-names/:cmtk", (req, res) => {
-    const { cmtk } = req.params;
-    const cmtkInstance = findCmtk(cmtk);
+	const { cmtk } = req.params;
+	const cmtkInstance = findCmtk(cmtk);
 
-    // Gets all the ports
-    const keys = Object.keys(cmtkInstance.ports);
+	// Gets all the ports
+	const keys = Object.keys(cmtkInstance.ports);
 
-    // Mapping through all key
-    const names = keys
-        .map((key) => cmtkInstance.ports[key]?.name)
-        .filter((name) => name !== undefined); // Remove any undefined values
+	// Mapping through all key
+	const names = keys.map((key) => cmtkInstance.ports[key]?.name).filter((name) => name !== undefined); // Remove any undefined values
 
-    res.json({
-        success: true,
-        data: names,
-    });
+	res.json({
+		success: true,
+		data: names,
+	});
 });
 
 /**
@@ -570,22 +661,18 @@ app.get("/api/ports-names/:cmtk", (req, res) => {
  *
  */
 app.get("/api/descriptions/:location", (req, res) => {
-    const { location } = req.params;
+	const { location } = req.params;
 
-    const descriptions = Object.entries(CMTKs[location]).map(
-        ([cmtkLabel, cmtk]) => {
-            const cmtkInstance = findCmtk(cmtkLabel);
+	const descriptions = Object.entries(CMTKs[location]).map(([cmtkLabel, cmtk]) => {
+		const cmtkInstance = findCmtk(cmtkLabel);
 
-            return cmtkInstance != null
-                ? cmtkInstance.description
-                : "Sin descripcion";
-        }
-    );
+		return cmtkInstance != null ? cmtkInstance.description : "Sin descripcion";
+	});
 
-    res.json({
-        success: true,
-        data: descriptions,
-    });
+	res.json({
+		success: true,
+		data: descriptions,
+	});
 });
 
 /**
@@ -600,21 +687,21 @@ app.get("/api/descriptions/:location", (req, res) => {
  * }
  */
 app.get("/api/get-general-settings", (req, res) => {
-    try {
-        res.json({
-            success: true,
-            data: {
-                cpf: Sensor.countToBeFail,
-                cph: Sensor.countToBeHealth,
-                samplingTime: samplingTime,
-            },
-        });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+	try {
+		res.json({
+			success: true,
+			data: {
+				cpf: Sensor.countToBeFail,
+				cph: Sensor.countToBeHealth,
+				samplingTime: samplingTime,
+			},
+		});
+	} catch (e) {
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -629,18 +716,18 @@ app.get("/api/get-general-settings", (req, res) => {
  * }
  */
 app.get("/api/get-cmtks/:area", (req, res) => {
-    const { area } = req.params;
-    try {
-        res.json({
-            success: true,
-            data: Object.keys(CMTKs[area]),
-        });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+	const { area } = req.params;
+	try {
+		res.json({
+			success: true,
+			data: Object.keys(CMTKs[area]),
+		});
+	} catch (e) {
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -656,36 +743,36 @@ app.get("/api/get-cmtks/:area", (req, res) => {
  *
  */
 app.post("/api/set-form-values", (req, res) => {
-    try {
-        const formValues = req.body.value;
+	try {
+		const formValues = req.body.value;
 
-        if (formValues === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: "Vibration not settled, value is nedded.",
-            });
-        }
+		if (formValues === undefined) {
+			return res.status(400).json({
+				success: false,
+				message: "Vibration not settled, value is nedded.",
+			});
+		}
 
-        // Set new sampling time
-        samplingTime = formValues.samplingTime;
-        clearInterval(samplingID);
-        samplingID = setInterval(ErrorsHandler, samplingTime);
+		// Set new sampling time
+		samplingTime = formValues.samplingTime;
+		clearInterval(samplingID);
+		samplingID = setInterval(ErrorsHandler, samplingTime);
 
-        res.json({
-            success: true,
-            data: {
-                cpf: Sensor.SetCountToFail(formValues.cpf),
-                cph: Sensor.SetCountToHealth(formValues.cph),
-                samplingTime: samplingTime,
-            },
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+		res.json({
+			success: true,
+			data: {
+				cpf: Sensor.SetCountToFail(formValues.cpf),
+				cph: Sensor.SetCountToHealth(formValues.cph),
+				samplingTime: samplingTime,
+			},
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -702,46 +789,46 @@ app.post("/api/set-form-values", (req, res) => {
  *
  */
 app.post("/api/set-cmtk-form-values", (req, res) => {
-    try {
-        const formValues = req.body.value;
+	try {
+		const formValues = req.body.value;
 
-        // Return error if formValues is undefined
-        if (formValues === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: "Form undefined",
-            });
-        }
+		// Return error if formValues is undefined
+		if (formValues === undefined) {
+			return res.status(400).json({
+				success: false,
+				message: "Form undefined",
+			});
+		}
 
-        // Get cmtk instance
-        const cmtkData = findCmtk(formValues.cmtk);
+		// Get cmtk instance
+		const cmtkData = findCmtk(formValues.cmtk);
 
-        // Set new description
-        cmtkData.description = formValues.description;
+		// Set new description
+		cmtkData.description = formValues.description;
 
-        // Set new ip
-        cmtkData.ip = formValues.ip;
+		// Set new ip
+		cmtkData.ip = formValues.ip;
 
-        // If port and name are settled, set the new value
-        if (formValues.port.length > 0 && formValues.name.length > 0) {
-            cmtkData.ports[formValues.port].SetName(formValues.name);
-        }
+		// If port and name are settled, set the new value
+		if (formValues.port.length > 0 && formValues.name.length > 0) {
+			cmtkData.ports[formValues.port].SetName(formValues.name);
+		}
 
-        res.json({
-            success: true,
-            data: {
-                description: cmtkData.description,
-                names: cmtkData.ports.keys,
-            },
-        });
-    } catch (error) {
-        // Return fail
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+		res.json({
+			success: true,
+			data: {
+				description: cmtkData.description,
+				names: cmtkData.ports.keys,
+			},
+		});
+	} catch (error) {
+		// Return fail
+		console.error(error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -760,60 +847,59 @@ app.post("/api/set-cmtk-form-values", (req, res) => {
  *
  */
 app.post("/api/set-sensor-setpoints", (req, res) => {
-    try {
-        const values = req.body.value;
-        const cmtk = findCmtk(values.cmtk);
-        const port = cmtk.ports[values.port];
-        let vibSettled = false;
-        let tempSettled = false;
-        let failMessage =
-            "El valor de falla debe ser mayor que el de warning. ";
+	try {
+		const values = req.body.value;
+		const cmtk = findCmtk(values.cmtk);
+		const port = cmtk.ports[values.port];
+		let vibSettled = false;
+		let tempSettled = false;
+		let failMessage = "El valor de falla debe ser mayor que el de warning. ";
 
-        if (values === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: "Vibration not settled, value is nedded.",
-            });
-        }
+		if (values === undefined) {
+			return res.status(400).json({
+				success: false,
+				message: "Vibration not settled, value is nedded.",
+			});
+		}
 
-        if (values.tempMax > values.tempWarning) {
-            // Set the new temperature values
-            port.SetTempMax(values.tempMax);
-            port.SetTempWarning(values.tempWarning);
-            tempSettled = true;
-        } else {
-            failMessage += "Temperatura no guardada. ";
-        }
+		if (values.tempMax > values.tempWarning) {
+			// Set the new temperature values
+			port.SetTempMax(values.tempMax);
+			port.SetTempWarning(values.tempWarning);
+			tempSettled = true;
+		} else {
+			failMessage += "Temperatura no guardada. ";
+		}
 
-        if (values.vibMax > values.vibWarning) {
-            // Set the new vib values
-            port.SetVibMax(values.vibMax);
-            port.SetVibWarning(values.vibWarning);
-            vibSettled = true;
-        } else {
-            failMessage += "Vibracion no guardada.";
-        }
+		if (values.vibMax > values.vibWarning) {
+			// Set the new vib values
+			port.SetVibMax(values.vibMax);
+			port.SetVibWarning(values.vibWarning);
+			vibSettled = true;
+		} else {
+			failMessage += "Vibracion no guardada.";
+		}
 
-        // Fail if vib or temp wasn't settled
-        if (!tempSettled || !vibSettled) {
-            res.json({
-                success: false,
-                message: failMessage,
-            });
-        } else {
-            res.json({
-                success: true,
-                data: true,
-            });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            data: false,
-            message: "Internal server error",
-        });
-    }
+		// Fail if vib or temp wasn't settled
+		if (!tempSettled || !vibSettled) {
+			res.json({
+				success: false,
+				message: failMessage,
+			});
+		} else {
+			res.json({
+				success: true,
+				data: true,
+			});
+		}
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			success: false,
+			data: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -832,34 +918,34 @@ app.post("/api/set-sensor-setpoints", (req, res) => {
  *
  */
 app.post("/api/add-cmtk", (req, res) => {
-    try {
-        const newCmtk = req.body.value;
+	try {
+		const newCmtk = req.body.value;
 
-        // Adding the cmtk into its area
-        CMTKs[newCmtk.area].push(newCmtk.cmtk);
+		// Adding the cmtk into its area
+		CMTKs[newCmtk.area].push(newCmtk.cmtk);
 
-        // Add the new cmtk to cmtks list
-        CMTKs.push({
-            [newCmtk.cmtk]: {
-                ip: newCmtk.ip,
-                ports: {},
-                influxConnection: null,
-                description: newCmtk.description,
-                enabledPorts: [],
-            },
-        });
+		// Add the new cmtk to cmtks list
+		CMTKs.push({
+			[newCmtk.cmtk]: {
+				ip: newCmtk.ip,
+				ports: {},
+				influxConnection: null,
+				description: newCmtk.description,
+				enabledPorts: [],
+			},
+		});
 
-        // Adding the new cmtk to files
-        CreateJsonFile("CMTK_LOCS.json", CMTK_LOCS);
-        CreateJsonFile("CMTKs.json", CMTKs);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            data: false,
-            message: "Internal server error",
-        });
-    }
+		// Adding the new cmtk to files
+		CreateJsonFile("CMTK_LOCS.json", CMTK_LOCS);
+		CreateJsonFile("CMTKs.json", CMTKs);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			success: false,
+			data: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -875,19 +961,19 @@ app.post("/api/add-cmtk", (req, res) => {
  *
  */
 app.delete("/api/delete-history", (req, res) => {
-    try {
-        errorsHistory.length = 0;
+	try {
+		errorsHistory.length = 0;
 
-        res.json({
-            success: true,
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+		res.json({
+			success: true,
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+		});
+	}
 });
 
 /**
@@ -904,20 +990,20 @@ app.delete("/api/delete-history", (req, res) => {
  *
  */
 app.get("/api/set-count-to-fail", (req, res) => {
-    try {
-        const value = req.query.value;
+	try {
+		const value = req.query.value;
 
-        res.json({
-            success: true,
-            data: Sensor.SetCountToFail(value),
-        });
-    } catch (e) {
-        console.error(`Error GET request /api/set-count-to-fail: ${e.message}`);
-        res.json({
-            success: false,
-            message: e.message,
-        });
-    }
+		res.json({
+			success: true,
+			data: Sensor.SetCountToFail(value),
+		});
+	} catch (e) {
+		console.error(`Error GET request /api/set-count-to-fail: ${e.message}`);
+		res.json({
+			success: false,
+			message: e.message,
+		});
+	}
 });
 
 /**
@@ -936,29 +1022,29 @@ app.get("/api/set-count-to-fail", (req, res) => {
  *
  */
 app.get("/api/set-sampling-time", (req, res) => {
-    try {
-        const value = Number(req.query.value);
+	try {
+		const value = Number(req.query.value);
 
-        // Validate the input (e.g., ensure it's a positive number)
-        if (value <= 0) {
-            return res.status(400).json({ message: "Invalid sampling time" });
-        }
+		// Validate the input (e.g., ensure it's a positive number)
+		if (value <= 0) {
+			return res.status(400).json({ message: "Invalid sampling time" });
+		}
 
-        samplingTime = value;
-        clearInterval(samplingID);
-        samplingID = setInterval(ErrorsHandler, samplingTime);
+		samplingTime = value;
+		clearInterval(samplingID);
+		samplingID = setInterval(ErrorsHandler, samplingTime);
 
-        res.json({
-            message: "Sampling time updated",
-            data: samplingTime,
-        });
-    } catch (e) {
-        console.error(`Error GET request /api/set-sampling-time: ${e.message}`);
-        res.json({
-            success: false,
-            message: e.message,
-        });
-    }
+		res.json({
+			message: "Sampling time updated",
+			data: samplingTime,
+		});
+	} catch (e) {
+		console.error(`Error GET request /api/set-sampling-time: ${e.message}`);
+		res.json({
+			success: false,
+			message: e.message,
+		});
+	}
 });
 
 /**
@@ -978,25 +1064,25 @@ app.get("/api/set-sampling-time", (req, res) => {
  *
  */
 app.get("/api/get-sensor-data/:cmtkLabel/:portLabel", (req, res) => {
-    const { cmtkLabel, portLabel } = req.params;
-    const cmtk = findCmtk(cmtkLabel);
-    const sensor = cmtk.ports[portLabel];
-    try {
-        res.json({
-            success: true,
-            data: {
-                vibMax: sensor.vibMax,
-                vibWarning: sensor.vibValueWarning,
-                tempMax: sensor.tempMax,
-                tempWarning: sensor.tempValueWarning,
-            },
-        });
-    } catch (error) {
-        res.json({
-            success: false,
-            message: error.message,
-        });
-    }
+	const { cmtkLabel, portLabel } = req.params;
+	const cmtk = findCmtk(cmtkLabel);
+	const sensor = cmtk.ports[portLabel];
+	try {
+		res.json({
+			success: true,
+			data: {
+				vibMax: sensor.vibMax,
+				vibWarning: sensor.vibValueWarning,
+				tempMax: sensor.tempMax,
+				tempWarning: sensor.tempValueWarning,
+			},
+		});
+	} catch (error) {
+		res.json({
+			success: false,
+			message: error.message,
+		});
+	}
 });
 
 /**
@@ -1016,25 +1102,25 @@ app.get("/api/get-sensor-data/:cmtkLabel/:portLabel", (req, res) => {
  *
  */
 app.get("/api/get-threshold-sensors/:cmtkLabel/:portLabel", (req, res) => {
-    const { cmtkLabel, portLabel } = req.params;
-    const cmtk = findCmtk(cmtkLabel);
-    const port = cmtk.ports[portLabel];
-    try {
-        res.json({
-            success: true,
-            data: {
-                vibMax: port.vibMax,
-                vibWarning: port.vibValueWarning,
-                tempMax: port.tempMax,
-                tempWarning: port.tempValueWarning,
-            },
-        });
-    } catch (error) {
-        res.json({
-            success: false,
-            message: error.message,
-        });
-    }
+	const { cmtkLabel, portLabel } = req.params;
+	const cmtk = findCmtk(cmtkLabel);
+	const port = cmtk.ports[portLabel];
+	try {
+		res.json({
+			success: true,
+			data: {
+				vibMax: port.vibMax,
+				vibWarning: port.vibValueWarning,
+				tempMax: port.tempMax,
+				tempWarning: port.tempValueWarning,
+			},
+		});
+	} catch (error) {
+		res.json({
+			success: false,
+			message: error.message,
+		});
+	}
 });
 
 /**
@@ -1050,64 +1136,58 @@ app.get("/api/get-threshold-sensors/:cmtkLabel/:portLabel", (req, res) => {
  *
  */
 app.get("/api/get-health-all", (req, res) => {
-    try {
-        const cmtkStates = {}; // Var were cmtk states will be stored
+	try {
+		const cmtkStates = {}; // Var were cmtk states will be stored
 
-        for (let area of Object.keys(CMTKs)) {
-            cmtkStates[area] = {};
-            // Looking for all the cmtks of the corrent area
-            for (let cmtkLabel of Object.keys(CMTKs[area])) {
-                const cmtk = CMTKs[area][cmtkLabel]; // Get the cmtk instance
-                cmtkStates[area][cmtkLabel] = {};
+		for (let area of Object.keys(CMTKs)) {
+			cmtkStates[area] = {};
+			// Looking for all the cmtks of the corrent area
+			for (let cmtkLabel of Object.keys(CMTKs[area])) {
+				const cmtk = CMTKs[area][cmtkLabel]; // Get the cmtk instance
+				cmtkStates[area][cmtkLabel] = {};
 
-                if (cmtk === null) {
-                    continue;
-                }
+				if (cmtk === null) {
+					continue;
+				}
 
-                let portsWarning = false; // Will be active if at least one port is in warning state
-                let portsFailure = false; // Will bi active if at least one port is in failure state
+				let portsWarning = false; // Will be active if at least one port is in warning state
+				let portsFailure = false; // Will bi active if at least one port is in failure state
 
-                for (let port of Object.keys(cmtk.ports)) {
-                    portsWarning |=
-                        cmtk.ports[port].tempWarning ||
-                        cmtk.ports[port].vibWarning;
+				for (let port of Object.keys(cmtk.ports)) {
+					portsWarning |= cmtk.ports[port].tempWarning || cmtk.ports[port].vibWarning;
 
-                    portsFailure |=
-                        cmtk.ports[port].tempFailure ||
-                        cmtk.ports[port].vibFailure;
-                }
+					portsFailure |= cmtk.ports[port].tempFailure || cmtk.ports[port].vibFailure;
+				}
 
-                // Add the cmtk state to cmtkStates
-                cmtkStates[area][cmtkLabel] = {
-                    warningState: portsWarning,
-                    failureState: portsFailure,
-                };
-            }
-        }
-        res.json({
-            success: true,
-            data: cmtkStates,
-        });
-    } catch (error) {
-        res.json({
-            success: false,
-            message: error.message,
-        });
-    }
+				// Add the cmtk state to cmtkStates
+				cmtkStates[area][cmtkLabel] = {
+					warningState: portsWarning,
+					failureState: portsFailure,
+				};
+			}
+		}
+		res.json({
+			success: true,
+			data: cmtkStates,
+		});
+	} catch (error) {
+		res.json({
+			success: false,
+			message: error.message,
+		});
+	}
 });
 
 app.get("/", (req, res) => {
-    res.json({ message: "Server is running!" });
+	res.json({ message: "Server is running!" });
 });
 
 app.use((req, res) => {
-    res.status(404).json({ message: "Endpoint not found" });
+	res.status(404).json({ message: "Endpoint not found" });
 });
 
 app.listen(LOCAL_SERVER_PORT, () => {
-    console.log(
-        `Express server running on http://localhost:${LOCAL_SERVER_PORT}`
-    );
+	console.log(`Express server running on http://localhost:${LOCAL_SERVER_PORT}`);
 });
 
 // Reads cmtks info
@@ -1115,178 +1195,82 @@ await loadCMTKs();
 
 // Loop through all the areas
 for (let area of Object.keys(CMTKs)) {
-    // Loop through all the cmtk in the current area
-    for (let cmtkLabel of Object.keys(CMTKs[area])) {
-        // Get the cmtkLabel
-        const cmtk = CMTKs[area][cmtkLabel];
+	// Loop through all the cmtk in the current area
+	for (let cmtkLabel of Object.keys(CMTKs[area])) {
+		// Get the cmtkLabel
+		const cmtk = CMTKs[area][cmtkLabel];
 
-        if (cmtk == null) {
-            // Storing the cmtk into no connected cmtks array
-            noConnectedCmtk.push(cmtkLabel);
-            continue;
-        }
+		await Connect2Cmtk(cmtkLabel); // Connect to the cmtk
 
-        // Create the influx connection to the current cmtk
-        cmtk.influxConnection = new InfluxDB_({
-            host: cmtk.ip, // Cmtk ip
-            port: INFLUXDB_PORT,
-            protocol: "https",
-            database: "balluffCMTKDatabase",
-            username: "cmtk",
-            password: "Balluff#1",
+		if (cmtk === null) {
+			continue;
+		}
+		// If the cmtk is not connected, add it to the noConnectedCmtk list
+		if (cmtk.influxConnection === null) {
+			console.log(`Failed to connect to InfluxDB for ${cmtkLabel}`);
 
-            options: {
-                rejectUnauthorized: false,
-            },
-        });
+			if (noConnectedCmtk.length === 0) {
+				connectionIntervalID = setInterval(Try2Connect, CONNECTION_SAMPLING_TIME); // Try to connect every second
+			}
 
-        cmtk.influxConnection.InitInfluxDB();
+			noConnectedCmtk.push(cmtkLabel);
+			continue;
+		}
 
-        // Get all the active ports
-        cmtk.influxConnection
-            .GetTables()
-            .then((tables) => {
-                cmtk.enabledPorts = tables; // Save the active ports
+		for (let port of Object.keys(cmtk.ports)) {
+			// Read the data and send it to plant MQTT broker
+			cmtk.ports[port].mqttInstance.ReadMQTT((topic, message) => {
+				const readData = JSON.parse(message);
 
-                // If no table is read
-                if (tables === null) {
-                    console.error(
-                        `No port detected. ${cmtkLabel}: ${cmtk.description}.`
-                    );
-                    return; // Exit callback (.then)
-                }
+				const time = readData.timestamp;
+				const contactTemp = readData.data.items["Contact Temperature Contact Temperature"];
+				const velocityX = readData.data.items["Vibration Velocity RMS v-RMS X"];
+				const velocityY = readData.data.items["Vibration Velocity RMS v-RMS Y"];
+				const velocityZ = readData.data.items["Vibration Velocity RMS v-RMS Z"];
 
-                // Loop through all ports of the current cmtk
-                for (let port of tables) {
-                    // Create MQTT instance for the current port
-                    cmtk.ports[port] = new Sensor({
-                        ip: cmtk.ip,
-                        name: port,
-                        cmtkPort: port,
-                        port: MQTT_PORT,
-                        topic: `balluff/cmtk/master1/iolink/devices/${port}/data/fromdevice`,
-                        user: "user",
-                        password: "Balluff#1",
-                        cmtk: cmtkLabel,
-                    });
+				const statusBits = {
+					temperature: readData.data.items["Status Bits Contact Temperature Upper Alarm Status"],
+					velocityX: readData.data.items["Status Bits Main-Alarm v-RMS X Status"],
+					velocityY: readData.data.items["Status Bits Main-Alarm v-RMS Y Status"],
+					velocityZ: readData.data.items["Status Bits Main-Alarm v-RMS Z Status"],
 
-                    // Inits the MQTT instance
-                    cmtk.ports[port].mqttInstance
-                        .InitMQTT()
-                        .then(() => {
-                            // Read the data and send it to plant MQTT broker
-                            cmtk.ports[port].mqttInstance.ReadMQTT(
-                                (topic, message) => {
-                                    const readData = JSON.parse(message);
+					preVelocityX: readData.data.items["Status Bits Pre-Alarm v-RMS X Status"],
+					preVelocityY: readData.data.items["Status Bits Pre-Alarm v-RMS Y Status"],
+					preVelocityZ: readData.data.items["Status Bits Pre-Alarm v-RMS Z Status"],
+				};
 
-                                    const time = readData.timestamp;
-                                    const contactTemp =
-                                        readData.data.items[
-                                            "Contact Temperature Contact Temperature"
-                                        ];
-                                    const velocityX =
-                                        readData.data.items[
-                                            "Vibration Velocity RMS v-RMS X"
-                                        ];
-                                    const velocityY =
-                                        readData.data.items[
-                                            "Vibration Velocity RMS v-RMS Y"
-                                        ];
-                                    const velocityZ =
-                                        readData.data.items[
-                                            "Vibration Velocity RMS v-RMS Z"
-                                        ];
+				// Velocity alarm
+				cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.velocityX || statusBits.velocityY || statusBits.velocityZ;
 
-                                    const statusBits = {
-                                        temperature:
-                                            readData.data.items[
-                                                "Status Bits Contact Temperature Upper Alarm Status"
-                                            ],
-                                        velocityX:
-                                            readData.data.items[
-                                                "Status Bits Main-Alarm v-RMS X Status"
-                                            ],
-                                        velocityY:
-                                            readData.data.items[
-                                                "Status Bits Main-Alarm v-RMS Y Status"
-                                            ],
-                                        velocityZ:
-                                            readData.data.items[
-                                                "Status Bits Main-Alarm v-RMS Z Status"
-                                            ],
+				// Velocity pre-alarm
+				cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.preVelocityX || statusBits.preVelocityY || statusBits.preVelocityZ;
 
-                                        preVelocityX:
-                                            readData.data.items[
-                                                "Status Bits Pre-Alarm v-RMS X Status"
-                                            ],
-                                        preVelocityY:
-                                            readData.data.items[
-                                                "Status Bits Pre-Alarm v-RMS Y Status"
-                                            ],
-                                        preVelocityZ:
-                                            readData.data.items[
-                                                "Status Bits Pre-Alarm v-RMS Z Status"
-                                            ],
-                                    };
+				// Temperature alarm
+				cmtk.ports[port].statusBits.tempMainAlarm = statusBits.temperature;
 
-                                    // Velocity alarm
-                                    cmtk.ports[
-                                        port
-                                    ].statusBits.velocityMainAlarm =
-                                        statusBits.velocityX ||
-                                        statusBits.velocityY ||
-                                        statusBits.velocityZ;
+				// Save the last values read
+				cmtk.ports[port].lastReadValues = {
+					"Contact Temperature Contact Temperature": contactTemp,
+					"Vibration Velocity RMS v-RMS X": velocityX,
+					"Vibration Velocity RMS v-RMS Y": velocityY,
+					"Vibration Velocity RMS v-RMS Z": velocityZ,
+				};
 
-                                    // Velocity pre-alarm
-                                    cmtk.ports[
-                                        port
-                                    ].statusBits.velocityMainAlarm =
-                                        statusBits.preVelocityX ||
-                                        statusBits.preVelocityY ||
-                                        statusBits.preVelocityZ;
+				const msgMQTT = cmtk.ports[port].mqttInstance.FormatMsg(
+					time,
+					contactTemp,
+					velocityX,
+					velocityY,
+					velocityZ,
+					cmtkLabel, // Location
+					port
+				);
 
-                                    // Temperature alarm
-                                    cmtk.ports[port].statusBits.tempMainAlarm =
-                                        statusBits.temperature;
-
-                                    // Save the last values read
-                                    cmtk.ports[port].lastReadValues = {
-                                        "Contact Temperature Contact Temperature":
-                                            contactTemp,
-                                        "Vibration Velocity RMS v-RMS X":
-                                            velocityX,
-                                        "Vibration Velocity RMS v-RMS Y":
-                                            velocityY,
-                                        "Vibration Velocity RMS v-RMS Z":
-                                            velocityZ,
-                                    };
-
-                                    const msgMQTT = cmtk.ports[
-                                        port
-                                    ].mqttInstance.FormatMsg(
-                                        time,
-                                        contactTemp,
-                                        velocityX,
-                                        velocityY,
-                                        velocityZ,
-                                        cmtkLabel, // Location
-                                        port
-                                    );
-
-                                    // Send MQTT message to plant server
-                                    // PlantServerMQTT.SendMQTT(msgMQTT);
-                                }
-                            );
-                        })
-                        .catch((err) => {
-                            console.error("Error initializing MQTT:", err);
-                        });
-                }
-            })
-            .catch((e) => {
-                console.log(`Can't connect to ${cmtkLabel}`);
-            });
-    }
+				// Send MQTT message to plant server
+				// PlantServerMQTT.SendMQTT(msgMQTT);
+			});
+		}
+	}
 }
 
 samplingID = setInterval(ErrorsHandler, samplingTime);

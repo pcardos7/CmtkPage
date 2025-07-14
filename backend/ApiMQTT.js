@@ -4,6 +4,7 @@ export default class MQTT {
     #client;
     #onMessageCallback;
 
+    // Constructor for the MQTT class
     constructor({ ip, port, topic, client_id, username, password }) {
         this.ip = ip;
         this.port = port;
