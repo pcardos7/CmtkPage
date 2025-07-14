@@ -1,5 +1,3 @@
-import React from "react";
-
 function HeaderComponent({ label }) {
     return (
         <h2

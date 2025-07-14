@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from "react";
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import HomePage from "./pages/HomePage";
-import LineChart from "./pages/ChartPage";
 import SettingsPage from "./pages/SettingsPage";
 import CmtkPage from "./pages/CmtkPage";
 import CmtkSettingsPage from "./pages/CmtkSettingsPage";

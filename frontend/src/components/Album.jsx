@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from "react";
 import Card from "./Card";
 /**
  * This component displays a gallery with multiple cards

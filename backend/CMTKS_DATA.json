@@ -6,7 +6,7 @@
             "ip": "192.168.10.1",
             "ports": {},
             "influxConnection": null,
-            "description": "Test description",
+            "description": "Test description.",
             "enabledPorts": null
         },
         "P1P1V1+VB03": null,

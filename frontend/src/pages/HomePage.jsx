@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/Template.css";
 import HeaderComponent from "../components/Header";
 import ListComponent from "../components/List";
