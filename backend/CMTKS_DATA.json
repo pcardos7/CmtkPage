@@ -1,0 +1,102 @@
+{
+    "Fosfato": {
+        "P1P1V1+VB06": null,
+        "P1P1V1+VB07": null,
+        "P1P1V1+VB02": {
+            "ip": "192.168.10.1",
+            "ports": {},
+            "influxConnection": null,
+            "description": "Test description",
+            "enabledPorts": null
+        },
+        "P1P1V1+VB03": null,
+        "P1P1V1+VB04": null
+    },
+    "Horno TC1": {
+        "P1C1T1+FL01": null,
+        "P1C1T1+UA04": null,
+        "P1C1T1+UA05": null,
+        "P1C1T1+UA06": null
+    },
+    "Horno TC2": {
+        "P1B2V1+ZL01": null,
+        "P1B2V1+ZL03": null,
+        "P1B2V1+ZL05": null
+    },
+    "ASU1 TC1": {
+        "P1B1V1+ZL01": null
+    },
+    "TACK-OFF TC1 TC2": {
+        "P1B1V1+ZL07": null
+    },
+    "ASU3 TC1": {
+        "P1B1V1+ZL03": null
+    },
+    "CAU2 TC1": {
+        "P1B1V1+ZL05": null
+    },
+    "ASU3 TC2": {
+        "P1B2V1+ZL03": null
+    },
+    "ASU2 TC1": {
+        "P1B1V1+ZL02": null
+    },
+    "CAU1 TC2": {
+        "P1B1V2+ZL04": null
+    },
+    "ASU2 TC2": {
+        "P1B2V1+ZL02": null
+    },
+    "ASU1 TUTONE": {
+        "P1B3V1+ZL01": null
+    },
+    "CAU1 TUTONE": {
+        "P1B3V1+ZL02": null
+    },
+    "CAU2 TUTONE": {
+        "P1B3V1+ZL03": null
+    },
+    "Workdeck ASU2": {
+        "P1D1V1+ZL02": null
+    },
+    "Workdeck ASU3": {
+        "P1D1V1+ZL03": null
+    },
+    "Workdeck ASU4": {
+        "P1D1V1+ZL04": null
+    },
+    "Horno Ecoat": {
+        "P1E1T1+UA07": {
+            "ip": "19.135.72.164",
+            "ports": {},
+            "influxConnection": null,
+            "description": "Zona 7. Tar 2.",
+            "enabledPorts": null
+        },
+        "P1E1T1+UA08": null,
+        "P1E1T1+UA10": null,
+        "P1E1T1+UH01": null,
+        "P1E1T1+UH02": null,
+        "P1E1T1+UH03": null,
+        "P1E1T1+TN01": null
+    },
+    "3 WET TU-TONE OVEN COOLING ZONE": {
+        "P1C3T1+KL01": null
+    },
+    "Horno Sello": {
+        "P1S1T1+UA01": null,
+        "P1S1T1+UA02": null,
+        "P1S1T1+UA04": null,
+        "P1S1T1+UA05": null,
+        "P1S1T1+UH01": null
+    },
+    "Fosa de lodos": {
+        "P1B1V1+AW01": {
+            "ip": "19.135.71.45",
+            "ports": {},
+            "influxConnection": null,
+            "description": "CMTK Fosa de lodos",
+            "enabledPorts": null
+        }
+    }
+}

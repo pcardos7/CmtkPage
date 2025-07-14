@@ -11,18 +11,25 @@ import InfluxDB_ from "./ApiInfluxDB.js";
 import Sensor from "./ApiSensors.js";
 import fs from "fs";
 import { readFile } from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const LOCAL_SERVER_PORT = 3000;
 const MQTT_PORT = 1883; // MQTT PORT (CMTK)
 const SERVER_PORT = 1883; // MQTT PORT (Plant server)
 const INFLUXDB_PORT = 8086; // INFLUXDB PORT (CMTK)
 const KEEP_ERRORS = 12; // Amount of hours to keep errors in history
-const FRONTEND_DIRECTION = "http://localhost:5173";
-const PLANT_SERVER_IP = "127.0.0.1";
-const CMTKs_PATH = "CMTKS_DATA.json";
+const FRONTEND_DIRECTION = "http://localhost:5173"; // Frontend direction
+const PLANT_SERVER_IP = "127.0.0.1"; // Plant server IP (MQTT server)
+const CMTKs_PATH = "./CMTKS_DATA.json"; // Path to the CMTKs data file
+
 let samplingTime = 1000; // Time per sample (default value)
 let samplingID; // ID of the interval for sampling
 let noConnectedCmtk = []; // Array to store all the cmtk that weren't connected
+
+// Get the current file and directory names
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Array to hold information about all CMTKs.
@@ -113,7 +120,8 @@ async function ReadJsonFile(title) {
  */
 async function loadCMTKs() {
     try {
-        const cmtksData = await ReadJsonFile(CMTKs_PATH);
+        // Read CMTK locations (relative path)
+        const cmtksData = await ReadJsonFile(path.join(__dirname, CMTKs_PATH));
 
         CMTKs = cmtksData;
     } catch (error) {
@@ -129,6 +137,7 @@ function DepureHistory() {
     const now = new Date();
     const dateToDelete = new Date(now.getTime() - KEEP_ERRORS * 60 * 60 * 1000); // Timestamp indicating the cutoff time; errors older than this will be deleted
 
+    // Format the date to match the format in errorsHistory
     const year = dateToDelete.getFullYear();
     const month = String(dateToDelete.getMonth() + 1).padStart(2, "0");
     const day = String(dateToDelete.getDate()).padStart(2, "0");
