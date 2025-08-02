@@ -6,71 +6,69 @@ import HeaderComponent from "../components/Header";
 import { API_ENDPOINTS } from "../BackEndData";
 
 function CmtkPage() {
-    const { location } = useParams();
-    const [cmtksLabels, setCmtksLabels] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [descriptions, setDescriptions] = useState([]);
+	const { location } = useParams();
+	const [cmtksLabels, setCmtksLabels] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const [descriptions, setDescriptions] = useState([]);
 
-    useEffect(() => {
-        async function fetchCmtksLocation() {
-            try {
-                // Makes the GET request to get all cmtks locations and stores them
-                const response = await fetch(
-                    API_ENDPOINTS.getCmtksInArea(location)
-                );
-                const jsonData = await response.json();
-                setCmtksLabels(jsonData.data);
-            } catch (err) {
-                // Show error
-                console.error(err.message);
-            } finally {
-                setLoading(false);
-            }
-        }
+	useEffect(() => {
+		async function fetchCmtksLocation() {
+			try {
+				// Makes the GET request to get all cmtks locations and stores them
+				const response = await fetch(API_ENDPOINTS.getCmtksInArea(location));
+				const jsonData = await response.json();
+				setCmtksLabels(jsonData.data);
+			} catch (err) {
+				// Show error
+				console.error(err.message);
+			} finally {
+				setLoading(false);
+			}
+		}
 
-        fetchCmtksLocation();
-    }, [location]);
+		fetchCmtksLocation();
+	}, [location]);
 
-    useEffect(() => {
-        async function fetchCmtksLocation() {
-            try {
-                // Makes the GET request to get all cmtks descriptions and stores them
-                const response = await fetch(
-                    API_ENDPOINTS.getDescriptions(location)
-                );
-                const jsonData = await response.json();
-                setDescriptions(jsonData.data);
-            } catch (err) {
-                // Show error
-                console.error(err.message);
-            } finally {
-                setLoading(false);
-            }
-        }
+	useEffect(() => {
+		async function fetchCmtksLocation() {
+			try {
+				// Makes the GET request to get all cmtks descriptions and stores them
+				const response = await fetch(API_ENDPOINTS.getDescriptions(location));
+				const jsonData = await response.json();
+				setDescriptions(jsonData.data);
+			} catch (err) {
+				// Show error
+				console.error(err.message);
+			} finally {
+				setLoading(false);
+			}
+		}
 
-        fetchCmtksLocation();
-    }, [location]);
+		fetchCmtksLocation();
+	}, [location]);
 
-    return (
-        <div className="container-fluid d-flex vw-100 vh-100">
-            <Navbar />
-            <div className="d-flex flex-column w-100">
-                <HeaderComponent label={location} />
+	return (
+		<div className="container-fluid d-flex vw-100 vh-100">
+			<Navbar />
+			<div className="d-flex flex-column w-100 h-100">
+				<HeaderComponent label={location} />
 
-                <div className="d-flex justify-content-center align-items-center">
-                    {loading && <p>Loading data...</p>}
-                    {error && <p>Error: {error}</p>}
-                    {!loading && !error && (
-                        <Album
-                            elements={cmtksLabels || []}
-                            descriptions={descriptions}
-                        />
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+				<div
+					className="d-flex flex-grow-1"
+					style={{
+						overflowY: "auto",
+						justifyContent: "flex-start",
+						flexDirection: "column",
+					}}
+				>
+					{loading && <p>Loading data...</p>}
+					{error && <p>Error: {error}</p>}
+					{!loading && !error && <Album elements={cmtksLabels || []} descriptions={descriptions} />}
+				</div>
+			</div>
+		</div>
+	);
 }
 
 export default CmtkPage;

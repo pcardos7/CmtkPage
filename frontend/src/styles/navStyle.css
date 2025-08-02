@@ -8,9 +8,32 @@ Color Palette:
 */
 
 .dropdown-item:active {
-    background-color: #112a4e;
+	background-color: #112a4e;
 }
 
 .active-link {
-    color: #ad343e;
+	color: #ad343e;
+}
+
+/* Hide the nav menu by default on small screens */
+.navbar-menu {
+	display: none;
+}
+
+/* Show menu when toggled */
+.navbar-menu.open {
+	display: block;
+}
+
+/* Show the toggle button only on small screens */
+@media (max-width: 768px) {
+	.navbar-toggler {
+		display: block;
+	}
+
+	/* Adjust nav styles for small screens */
+	/* For larger screens, show nav normally */
+	.navbar-menu {
+		display: block !important;
+	}
 }

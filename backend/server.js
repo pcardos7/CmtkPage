@@ -49,7 +49,7 @@ const app = express();
 
 app.use(
 	cors({
-		origin: FRONTEND_DIRECTION, // allow only frontend
+		origin: [FRONTEND_DIRECTION, "http://192.168.10.14:5173", "http://19.135.121.133:5173"], // allow only frontend
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"], // expected headers
 	})
@@ -123,6 +123,7 @@ async function ReadJsonFile(title) {
 
 /**
  * Gets all CMTK's info
+ * This function reads the CMTK data from a JSON file
  */
 async function loadCMTKs() {
 	try {
@@ -275,18 +276,24 @@ async function Connect2Cmtk(cmtkLabel) {
 
 /**
  * Tries to connect to the specified CMTK.
+ * This function iterates through the `noConnectedCmtk` array,
  *
  */
 async function Try2Connect() {
+	// Loop through all CMTKs that are not connected
 	for (let cmtkLabel of noConnectedCmtk) {
+		// Attempt to connect to the CMTK
 		const connected = await Connect2Cmtk(cmtkLabel);
 
+		// If connected, log the success and remove from the noConnectedCmtk array
 		if (connected) {
 			console.log(`Connected to CMTK: ${cmtkLabel}`);
-			noConnectedCmtk = noConnectedCmtk.filter((label) => label !== cmtkLabel); // Remove connected CMTK from the list
+			// Remove connected CMTK from the list
+			noConnectedCmtk = noConnectedCmtk.filter((label) => label !== cmtkLabel);
 
 			if (noConnectedCmtk.length === 0) {
-				clearInterval(connectionIntervalID); // Clear the interval if all CMTKs are connected
+				// Clear the interval if all CMTKs are connected
+				clearInterval(connectionIntervalID);
 			}
 		}
 	}
@@ -392,8 +399,24 @@ app.get("/api/get-data/:cmtk", (req, res) => {
 	const consultedPort = req.query.port; // Get port
 
 	try {
+		// Validate required parameters
+		if (!cmtk || !time || !consultedPort) {
+			return res.status(400).json({
+				success: false,
+				message: "Missing required parameters.",
+			});
+		}
+		// Find the CMTK instance
 		const cmtkData = findCmtk(cmtk);
 
+		// If CMTK instance is not found, return an error
+		if (!cmtkData) {
+			return res.status(404).json({
+				success: false,
+				message: "CMTK not found.",
+			});
+		}
+		// Initialize the InfluxDB connection
 		cmtkData.influxConnection.InitInfluxDB();
 
 		// Getting the last 24h data
@@ -412,10 +435,15 @@ app.get("/api/get-data/:cmtk", (req, res) => {
 			})
 			.catch((error) => {
 				console.error("Error fetching port data:", error);
+
+				return res.status(500).json({
+					success: false,
+					message: "Error fetching port data.",
+				});
 			});
 	} catch (e) {
 		console.error(`Error at GET request /api/get-data/:cmtk -> ${e.message}`);
-		res.json({
+		return res.status(500).json({
 			success: false,
 			data: e.message,
 		});
@@ -862,19 +890,19 @@ app.post("/api/set-sensor-setpoints", (req, res) => {
 			});
 		}
 
-		if (values.tempMax > values.tempWarning) {
+		if (values.tempValueFailure > values.tempValueWarning) {
 			// Set the new temperature values
-			port.SetTempMax(values.tempMax);
-			port.SetTempWarning(values.tempWarning);
+			port.SetTempValueFailure(values.tempValueFailure);
+			port.SetTempValueWarning(values.tempValueWarning);
 			tempSettled = true;
 		} else {
 			failMessage += "Temperatura no guardada. ";
 		}
 
-		if (values.vibMax > values.vibWarning) {
+		if (values.vibValueFailure > values.vibWarning) {
 			// Set the new vib values
-			port.SetVibMax(values.vibMax);
-			port.SetVibWarning(values.vibWarning);
+			port.SetVibValueFailure(values.vibValueFailure);
+			port.SetVibValueWarning(values.vibValueWarning);
 			vibSettled = true;
 		} else {
 			failMessage += "Vibracion no guardada.";
@@ -1071,9 +1099,9 @@ app.get("/api/get-sensor-data/:cmtkLabel/:portLabel", (req, res) => {
 		res.json({
 			success: true,
 			data: {
-				vibMax: sensor.vibMax,
+				vibValueFailure: sensor.vibValueFailure,
 				vibWarning: sensor.vibValueWarning,
-				tempMax: sensor.tempMax,
+				tempValueFailure: sensor.tempValueFailure,
 				tempWarning: sensor.tempValueWarning,
 			},
 		});
@@ -1109,9 +1137,9 @@ app.get("/api/get-threshold-sensors/:cmtkLabel/:portLabel", (req, res) => {
 		res.json({
 			success: true,
 			data: {
-				vibMax: port.vibMax,
+				vibValueFailure: port.vibValueFailure,
 				vibWarning: port.vibValueWarning,
-				tempMax: port.tempMax,
+				tempValueFailure: port.tempValueFailure,
 				tempWarning: port.tempValueWarning,
 			},
 		});
@@ -1255,6 +1283,12 @@ for (let area of Object.keys(CMTKs)) {
 					"Vibration Velocity RMS v-RMS Y": velocityY,
 					"Vibration Velocity RMS v-RMS Z": velocityZ,
 				};
+
+				// Save the last read values into history
+				cmtk.ports[port].SaveValuesToHistory();
+
+				// Calculate new thresholds
+				cmtk.ports[port].CalculateThresholds();
 
 				const msgMQTT = cmtk.ports[port].mqttInstance.FormatMsg(
 					time,
