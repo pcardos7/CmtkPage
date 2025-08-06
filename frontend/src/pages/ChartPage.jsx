@@ -192,7 +192,7 @@ function ChartPage() {
 	return (
 		<div className="container-fluid d-flex vw-100 vh-100">
 			<Navbar />
-			<div className="d-flex flex-column w-100">
+			<div className="d-flex flex-column w-100" style={{ height: "100vh", overflowY: "auto" }}>
 				<div className="d-block ps-4 pt-3 " style={{ backgroundColor: "#202528" }}>
 					{/* Header */}
 					<header className="d-flex">

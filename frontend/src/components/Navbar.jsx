@@ -44,6 +44,15 @@ const Navbar = () => {
 		navigate("/");
 	};
 
+	/**
+	 * Function to handle a click in home button
+	 * @param {Object} e    -   Error data
+	 */
+	const handleLocationClick = (e) => {
+		e.preventDefault();
+		navigate("/Locations");
+	};
+
 	return (
 		<div className="d-flex vh-100">
 			<nav className="d-flex flex-column flex-shrink-0 p-3 text-bg-dark" style={{ width: "200px" }} aria-label="Sidebar">
@@ -98,6 +107,17 @@ const Navbar = () => {
 							}}
 						>
 							Ajustes
+						</button>
+					</li>
+					<li>
+						<button
+							className="btn btn-dark w-100 text-start"
+							onClick={handleLocationClick}
+							style={{
+								color: location.pathname === "/Ubicaciones" ? "#0094C6" : undefined,
+							}}
+						>
+							Ubicaciones
 						</button>
 					</li>
 				</ul>

@@ -332,6 +332,14 @@ function findLocationByCmtk(cmtkLabel) {
 	return null; // Not found
 }
 
+function returnAllCmtksLabels() {
+	const allCmtks = [];
+	for (let area of Object.keys(CMTKs)) {
+		allCmtks.push(...Object.keys(CMTKs[area]));
+	}
+	return allCmtks;
+}
+
 app.use((req, res, next) => {
 	res.setHeader("Content-Type", "application/json; charset=utf-8");
 	res.setHeader("Access-Control-Allow-Origin", "*");
@@ -1210,19 +1218,60 @@ app.get("/api/get-health-all", (req, res) => {
  * GET /api/try-to-connect-cmtks
  * Tries to connect to all cmtks that are not connected.
  *
- *
+ *	Response format:
+ * {
+ *   success: boolean,
+ *   message: string
+ * }
  */
 app.get("/api/try-to-connect-cmtks", async (req, res) => {
 	try {
-		loadCMTKs(); // Reload CMTKs
-		await Try2Connect();
-
+		// loadCMTKs(); // Reload CMTKs
+		// await Try2Connect();
+		StartServer(); // Start the server, this will connect to all cmtks
 		res.json({
 			success: true,
-			message,
+			message: "Connection attempt completed.",
 		});
 	} catch (error) {
 		res.json({
+			success: false,
+			message: error.message,
+		});
+	}
+});
+/**
+ * GET /api/get-all-cmtks
+ * Returns a list with all cmtks labels.
+ *
+ * Response format:
+ * {
+ *  success: boolean,
+ *  data: list
+ * }
+ */
+app.get("/api/get-all-cmtks", (req, res) => {
+	try {
+		res.json({
+			success: true,
+			data: returnAllCmtksLabels(),
+		});
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			message: error.message,
+		});
+	}
+});
+
+app.get("/api/locationImages/:floor", (req, res) => {
+	try {
+		const floor = req.params.floor;
+
+		const imagePath = path.join(__dirname, "img", `floor${floor}.jpg`);
+		res.sendFile(imagePath);
+	} catch (error) {
+		return res.status(500).json({
 			success: false,
 			message: error.message,
 		});
@@ -1245,90 +1294,94 @@ app.listen(LOCAL_SERVER_PORT, () => {
 await loadCMTKs();
 
 // Loop through all the areas
-for (let area of Object.keys(CMTKs)) {
-	// Loop through all the cmtk in the current area
-	for (let cmtkLabel of Object.keys(CMTKs[area])) {
-		// Get the cmtkLabel
-		const cmtk = CMTKs[area][cmtkLabel];
+async function StartServer() {
+	for (let area of Object.keys(CMTKs)) {
+		// Loop through all the cmtk in the current area
+		for (let cmtkLabel of Object.keys(CMTKs[area])) {
+			// Get the cmtkLabel
+			const cmtk = CMTKs[area][cmtkLabel];
 
-		await Connect2Cmtk(cmtkLabel); // Connect to the cmtk
+			await Connect2Cmtk(cmtkLabel); // Connect to the cmtk
 
-		if (cmtk === null) {
-			continue;
-		}
-		// If the cmtk is not connected, add it to the noConnectedCmtk list
-		if (cmtk.influxConnection === null) {
-			console.log(`Failed to connect to InfluxDB for ${cmtkLabel}`);
+			if (cmtk === null) {
+				continue;
+			}
+			// If the cmtk is not connected, add it to the noConnectedCmtk list
+			if (cmtk.influxConnection === null) {
+				console.log(`Failed to connect to InfluxDB for ${cmtkLabel}`);
 
-			if (noConnectedCmtk.length === 0) {
-				connectionIntervalID = setInterval(Try2Connect, CONNECTION_SAMPLING_TIME); // Try to connect every second
+				if (noConnectedCmtk.length === 0) {
+					connectionIntervalID = setInterval(Try2Connect, CONNECTION_SAMPLING_TIME); // Try to connect every second
+				}
+
+				noConnectedCmtk.push(cmtkLabel);
+				continue;
 			}
 
-			noConnectedCmtk.push(cmtkLabel);
-			continue;
-		}
+			for (let port of Object.keys(cmtk.ports)) {
+				// Read the data and send it to plant MQTT broker
+				cmtk.ports[port].mqttInstance.ReadMQTT((topic, message) => {
+					const readData = JSON.parse(message);
 
-		for (let port of Object.keys(cmtk.ports)) {
-			// Read the data and send it to plant MQTT broker
-			cmtk.ports[port].mqttInstance.ReadMQTT((topic, message) => {
-				const readData = JSON.parse(message);
+					const time = readData.timestamp;
+					const contactTemp = readData.data.items["Contact Temperature Contact Temperature"];
+					const velocityX = readData.data.items["Vibration Velocity RMS v-RMS X"];
+					const velocityY = readData.data.items["Vibration Velocity RMS v-RMS Y"];
+					const velocityZ = readData.data.items["Vibration Velocity RMS v-RMS Z"];
 
-				const time = readData.timestamp;
-				const contactTemp = readData.data.items["Contact Temperature Contact Temperature"];
-				const velocityX = readData.data.items["Vibration Velocity RMS v-RMS X"];
-				const velocityY = readData.data.items["Vibration Velocity RMS v-RMS Y"];
-				const velocityZ = readData.data.items["Vibration Velocity RMS v-RMS Z"];
+					const statusBits = {
+						temperature: readData.data.items["Status Bits Contact Temperature Upper Alarm Status"],
+						velocityX: readData.data.items["Status Bits Main-Alarm v-RMS X Status"],
+						velocityY: readData.data.items["Status Bits Main-Alarm v-RMS Y Status"],
+						velocityZ: readData.data.items["Status Bits Main-Alarm v-RMS Z Status"],
 
-				const statusBits = {
-					temperature: readData.data.items["Status Bits Contact Temperature Upper Alarm Status"],
-					velocityX: readData.data.items["Status Bits Main-Alarm v-RMS X Status"],
-					velocityY: readData.data.items["Status Bits Main-Alarm v-RMS Y Status"],
-					velocityZ: readData.data.items["Status Bits Main-Alarm v-RMS Z Status"],
+						preVelocityX: readData.data.items["Status Bits Pre-Alarm v-RMS X Status"],
+						preVelocityY: readData.data.items["Status Bits Pre-Alarm v-RMS Y Status"],
+						preVelocityZ: readData.data.items["Status Bits Pre-Alarm v-RMS Z Status"],
+					};
 
-					preVelocityX: readData.data.items["Status Bits Pre-Alarm v-RMS X Status"],
-					preVelocityY: readData.data.items["Status Bits Pre-Alarm v-RMS Y Status"],
-					preVelocityZ: readData.data.items["Status Bits Pre-Alarm v-RMS Z Status"],
-				};
+					// Velocity alarm
+					cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.velocityX || statusBits.velocityY || statusBits.velocityZ;
 
-				// Velocity alarm
-				cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.velocityX || statusBits.velocityY || statusBits.velocityZ;
+					// Velocity pre-alarm
+					cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.preVelocityX || statusBits.preVelocityY || statusBits.preVelocityZ;
 
-				// Velocity pre-alarm
-				cmtk.ports[port].statusBits.velocityMainAlarm = statusBits.preVelocityX || statusBits.preVelocityY || statusBits.preVelocityZ;
+					// Temperature alarm
+					cmtk.ports[port].statusBits.tempMainAlarm = statusBits.temperature;
 
-				// Temperature alarm
-				cmtk.ports[port].statusBits.tempMainAlarm = statusBits.temperature;
+					// Save the last values read
+					cmtk.ports[port].lastReadValues = {
+						"Contact Temperature Contact Temperature": contactTemp,
+						"Vibration Velocity RMS v-RMS X": velocityX,
+						"Vibration Velocity RMS v-RMS Y": velocityY,
+						"Vibration Velocity RMS v-RMS Z": velocityZ,
+					};
 
-				// Save the last values read
-				cmtk.ports[port].lastReadValues = {
-					"Contact Temperature Contact Temperature": contactTemp,
-					"Vibration Velocity RMS v-RMS X": velocityX,
-					"Vibration Velocity RMS v-RMS Y": velocityY,
-					"Vibration Velocity RMS v-RMS Z": velocityZ,
-				};
+					// Save the last read values into history
+					cmtk.ports[port].SaveValuesToHistory();
 
-				// Save the last read values into history
-				cmtk.ports[port].SaveValuesToHistory();
+					// Calculate new thresholds
+					cmtk.ports[port].CalculateThresholds();
 
-				// Calculate new thresholds
-				cmtk.ports[port].CalculateThresholds();
+					const msgMQTT = cmtk.ports[port].mqttInstance.FormatMsg(
+						time,
+						contactTemp,
+						velocityX,
+						velocityY,
+						velocityZ,
+						cmtkLabel, // Location
+						port
+					);
 
-				const msgMQTT = cmtk.ports[port].mqttInstance.FormatMsg(
-					time,
-					contactTemp,
-					velocityX,
-					velocityY,
-					velocityZ,
-					cmtkLabel, // Location
-					port
-				);
-
-				// Send MQTT message to plant server
-				// PlantServerMQTT.SendMQTT(msgMQTT);
-			});
+					// Send MQTT message to plant server
+					// PlantServerMQTT.SendMQTT(msgMQTT);
+				});
+			}
 		}
 	}
 }
+
+StartServer();
 
 samplingID = setInterval(ErrorsHandler, samplingTime);
 setInterval(DepureHistory, 500);

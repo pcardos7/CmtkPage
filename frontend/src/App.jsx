@@ -7,32 +7,22 @@ import CmtkPage from "./pages/CmtkPage";
 import CmtkSettingsPage from "./pages/CmtkSettingsPage";
 import SensorSettingsPage from "./pages/SensorSettingsPage";
 import ChartPage from "./pages/ChartPage";
+import LocationsPage from "./pages/LocationsPage";
 
 function App() {
-    return (
-        <Router>
-            <Routes>
-                <Route path="/" element={<HomePage />}></Route>
-                <Route
-                    path="/ChartPage/:location/:cmtk"
-                    element={<ChartPage />}
-                ></Route>
-                <Route
-                    path="/ChartPage/:location"
-                    element={<CmtkPage />}
-                ></Route>
-                <Route path="/Settings" element={<SettingsPage />}></Route>
-                <Route
-                    path="/:cmtk/settings"
-                    element={<CmtkSettingsPage />}
-                ></Route>
-                <Route
-                    path="/ChartPage/:cmtk/:location/:port"
-                    element={<SensorSettingsPage />}
-                ></Route>
-            </Routes>
-        </Router>
-    );
+	return (
+		<Router>
+			<Routes>
+				<Route path="/" element={<HomePage />}></Route>
+				<Route path="/ChartPage/:location/:cmtk" element={<ChartPage />}></Route>
+				<Route path="/ChartPage/:location" element={<CmtkPage />}></Route>
+				<Route path="/Settings" element={<SettingsPage />}></Route>
+				<Route path="/:cmtk/settings" element={<CmtkSettingsPage />}></Route>
+				<Route path="/ChartPage/:cmtk/:location/:port" element={<SensorSettingsPage />}></Route>
+				<Route path="/Locations" element={<LocationsPage />}></Route>
+			</Routes>
+		</Router>
+	);
 }
 
 export default App;

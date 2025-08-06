@@ -7,7 +7,7 @@ import "../styles/style.css";
 import "../BackEndData";
 import { API_ENDPOINTS } from "../BackEndData";
 
-const SAMPLING_TIME = 5000; // 5 seconds
+const SAMPLING_TIME = import.meta.env.VITE_SAMPLING_TIME;
 
 let errorIntervalID;
 let healthIntervalID;
@@ -74,40 +74,38 @@ function HomePage() {
 
 	return (
 		<>
-			<div className="container-fluid d-flex vw-100 vh-100">
+			<div className="container-fluid d-flex vw-100 vh-100" style={{ overflow: "hidden" }}>
 				<Navbar />
-				<div className="w-100">
-					<HeaderComponent label={"Home"} />
-					{/* Page content */}
-					<div className="d-block">
-						<div>
-							<div className="d-flex justify-content-end me-5">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="25"
-									height="25"
-									fill="currentColor"
-									class="bi bi-arrow-clockwise"
-									viewBox="0 0 16 16"
-									onClick={() => {
-										RechargeCmtks();
-									}}
-									style={{ cursor: "pointer" }}
-								>
-									<title>Recargar conexiones</title>
-									<path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
-									<path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466" />
-								</svg>
-							</div>
+				<div className="d-flex flex-column w-100" style={{ height: "100vh" }}>
+					<HeaderComponent label={"Home"} showAlarmIcon={false} />
+					<div style={{ flex: 1, overflowY: "auto", padding: "0 1rem" }}>
+						<div className="d-flex justify-content-end me-5 mt-1">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="25"
+								height="25"
+								fill="currentColor"
+								className="bi bi-arrow-clockwise"
+								viewBox="0 0 16 16"
+								onClick={() => {
+									RechargeCmtks();
+								}}
+								style={{ cursor: "pointer" }}
+							>
+								<title>Recargar conexiones</title>
+								<path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
+								<path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466" />
+							</svg>
 						</div>
-						<div className="d-flex ms-4 h-25 mb-3">
+
+						<div className="d-flex ms-4 mb-3 flex-wrap">
 							{Object.entries(cmtkStates).length > 0 && (
 								<div
 									className="d-flex flex-wrap justify-content-start"
 									style={{
-										maxWidth: "90%", // overall container max width
+										maxWidth: "90%",
 										margin: "0 auto",
-										gap: "1rem", // gap between groups
+										gap: "1rem",
 										fontSize: "0.5rem",
 									}}
 								>
@@ -117,20 +115,14 @@ function HomePage() {
 											className="border rounded p-2"
 											style={{
 												width: 180,
-												flex: "0 0 auto", // don't shrink, don't grow, maintain width
+												flex: "0 0 auto",
 												boxSizing: "border-box",
 												backgroundColor: "#fff",
 											}}
 										>
-											<h4
-												className="mb-2"
-												style={{
-													fontSize: "0.7rem",
-												}}
-											>
+											<h4 className="mb-2" style={{ fontSize: "0.7rem" }}>
 												{key}
 											</h4>
-
 											<div className="d-flex flex-nowrap flex-row">
 												{Object.entries(value).map(([cmtkName, state]) => (
 													<a
@@ -143,12 +135,12 @@ function HomePage() {
 															width: 20,
 															height: 20,
 															backgroundColor: state.failureState
-																? "#AD343E" // Fail state
+																? "#AD343E"
 																: state.warningState
-																? "#E28413" // Warning state
+																? "#E28413"
 																: state.failureState == undefined || state.warningState == undefined
-																? "#DBDBDB" // No connection state
-																: "#2B9720", // Ok
+																? "#DBDBDB"
+																: "#2B9720",
 															marginRight: 6,
 														}}
 													/>
@@ -159,10 +151,11 @@ function HomePage() {
 								</div>
 							)}
 						</div>
-						<div className="d-flex h-75 justify-content-center align-items-center">
+
+						<div className="d-flex justify-content-center align-items-center" style={{ minHeight: "300px" }}>
 							<div className="card p-1" style={{ maxWidth: "600px", width: "100%" }}>
 								<h3 className="text-center">Historial de Fallas</h3>
-								{errorsHistory.length ? <ListComponent listData={errorsHistory} /> : <p>No hay fallas por mostras.</p>}
+								{errorsHistory.length ? <ListComponent listData={errorsHistory} /> : <p>No hay fallas por mostrar.</p>}
 							</div>
 						</div>
 					</div>

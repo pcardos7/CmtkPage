@@ -37,3 +37,7 @@ Color Palette:
 		display: block !important;
 	}
 }
+
+nav {
+	position: fixed;
+}

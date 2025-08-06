@@ -38,6 +38,12 @@ const API_ENDPOINTS = {
 	getGeneralSettings: `${BACKEND_IP}/api/get-general-settings`,
 
 	/**
+	 * Endpoint to get all cmtks labels
+	 * @constant {string}
+	 */
+	getAllCmtksLabels: `${BACKEND_IP}/api/get-all-cmtks`,
+
+	/**
 	 * Returns the URL to get data for a given location and cmtk
 	 * @param {string} location - The location name
 	 * @param {string} cmtk - The cmtk identifier
@@ -114,15 +120,24 @@ const API_ENDPOINTS = {
 
 	/**
 	 * Endpoint to get the cmtk's ip
-	 * @constant {string}
+	 * @param {string} cmtk - The cmtk identifier
+	 * @returns {string} Complete URL to fetch the cmtk's IP address
 	 */
 	getCmtkIp: (cmtk) => `${BACKEND_IP}/api/ip/${cmtk}`,
 
 	/**
 	 * Endpoint to get all the cmtks in a area
-	 * @constant {string}
+	 * @param {string} area - The area name
+	 * @returns {string} Complete URL to fetch cmtks in the specified area
 	 */
 	getCmtksInArea: (area) => `${BACKEND_IP}/api/get-cmtks/${area}`,
+
+	/**
+	 * Returns the URL to get an image by its name
+	 * @param {string} floor - The floor name (e.g., "1", "2")
+	 * @returns {string} Complete URL to fetch the image
+	 */
+	getLocationsImages: (floor) => `${BACKEND_IP}/api/locationImages/${floor}`,
 
 	/**
 	 * Endpoint for retrieving error history
