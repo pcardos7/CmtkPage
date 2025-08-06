@@ -54,13 +54,52 @@ function HomePage() {
 		return () => clearInterval(healthIntervalID); // Clear the interval on component unmount
 	}, []);
 
+	const RechargeCmtks = () => {
+		async function Connect2Cmtks() {
+			try {
+				// Makes the GET request to connect to all cmtk
+				const response = await fetch(API_ENDPOINTS.connect2Cmtks);
+
+				// Handle error
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+			} catch (err) {
+				console.error(err.message);
+			}
+		}
+
+		Connect2Cmtks();
+	};
+
 	return (
 		<>
 			<div className="container-fluid d-flex vw-100 vh-100">
 				<Navbar />
 				<div className="w-100">
 					<HeaderComponent label={"Home"} />
+					{/* Page content */}
 					<div className="d-block">
+						<div>
+							<div className="d-flex justify-content-end me-5">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="25"
+									height="25"
+									fill="currentColor"
+									class="bi bi-arrow-clockwise"
+									viewBox="0 0 16 16"
+									onClick={() => {
+										RechargeCmtks();
+									}}
+									style={{ cursor: "pointer" }}
+								>
+									<title>Recargar conexiones</title>
+									<path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
+									<path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466" />
+								</svg>
+							</div>
+						</div>
 						<div className="d-flex ms-4 h-25 mb-3">
 							{Object.entries(cmtkStates).length > 0 && (
 								<div

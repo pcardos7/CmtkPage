@@ -1206,6 +1206,29 @@ app.get("/api/get-health-all", (req, res) => {
 	}
 });
 
+/**
+ * GET /api/try-to-connect-cmtks
+ * Tries to connect to all cmtks that are not connected.
+ *
+ *
+ */
+app.get("/api/try-to-connect-cmtks", async (req, res) => {
+	try {
+		loadCMTKs(); // Reload CMTKs
+		await Try2Connect();
+
+		res.json({
+			success: true,
+			message,
+		});
+	} catch (error) {
+		res.json({
+			success: false,
+			message: error.message,
+		});
+	}
+});
+
 app.get("/", (req, res) => {
 	res.json({ message: "Server is running!" });
 });
@@ -1308,4 +1331,4 @@ for (let area of Object.keys(CMTKs)) {
 }
 
 samplingID = setInterval(ErrorsHandler, samplingTime);
-// setInterval(DepureHistory, 500);
+setInterval(DepureHistory, 500);
